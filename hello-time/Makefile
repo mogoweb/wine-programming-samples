@@ -1,8 +1,8 @@
 CC = i686-w64-mingw32-g++
-CFLAGS = -Wall -O2 -static-libgcc -static-libstdc++ -std=c++20
+CFLAGS = -Wall -O2 -static-libgcc -static-libstdc++ -std=c++20 -mconsole
 LDFLAGS =
 
-TARGET = hello-timezone.exe
+TARGET = hello-time.exe
 SRC := $(shell find . -type f \( -name "*.cpp" -o -name "*.c" \))
 OBJ := $(SRC:.cpp=.o)
 OBJ := $(OBJ:.c=.o)
