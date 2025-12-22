@@ -22,6 +22,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
     RegisterClassW(&wc);
 
