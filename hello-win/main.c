@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdio.h>
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -48,6 +49,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     int x = (screenWidth  - winWidth)  / 2;
     int y = (screenHeight - winHeight) / 2;
+
+    char outstr[64];
+    sprintf(outstr, "CreateWindow(%d, %d, %d, %d)\n", x, y, winWidth, winHeight);
+    OutputDebugStringA(outstr);
 
     HWND hwnd = CreateWindow(
         "MyWindowClass",
