@@ -1,0 +1,15 @@
+// resource.rc
+#include <windows.h>
+#include "resource.h"
+
+// 设定代码页为 UTF-8
+#pragma code_page(65001)
+
+IDD_MAINDIALOG DIALOGEX 0, 0, 200, 100
+STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "我是模态对话框"
+FONT 9, "Microsoft YaHei"
+BEGIN
+    CTEXT           "Hello, 主窗口被我锁定啦！", IDC_STATIC, 10, 25, 180, 20
+    PUSHBUTTON      "确定(&O)", IDC_BTN_OK, 75, 65, 50, 15
+END
