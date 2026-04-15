@@ -18,7 +18,7 @@ CFLAGS = -Wall -Wextra -O2
 LDFLAGS = -mwindows -mconsole
 
 # 最终生成的目标文件
-TARGETS = parent_app.exe child_app.exe single_app.exe
+TARGETS = parent_app.exe child_app.exe single_app.exe child_to_main.exe
 
 # 默认目标
 .PHONY: all
@@ -36,6 +36,11 @@ child_app.exe: child_app.c
 
 # 编译单窗口程序
 single_app.exe: single_app.c
+	@echo "  $(CC)      $@"
+	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+
+# 编译单窗口程序
+child_to_main.exe: child_to_main.c
 	@echo "  $(CC)      $@"
 	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
