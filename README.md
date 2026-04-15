@@ -16,6 +16,8 @@
 │   ├── setparent/              # 跨进程 SetParent 调用演示
 │   └── viewporter/             # Wayland wp_viewporter 扩展演示
 │
+├── cross-process/           # 跨进程窗口操作演示
+│
 ├── hello-win/               # 基础 Win32 窗口示例，输出窗口几何信息
 ├── hello-edit/              # IME (Input Method Editor) 消息处理演示
 ├── hello-time/              # Windows 时间 API 演示 (GetLocalTime/GetSystemTime)
@@ -89,6 +91,13 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 | setforgroundwindow | 演示 `SetForegroundWindow` 实现窗口焦点切换 |
 | setparent | 演示跨进程 `SetParent` 调用，将子窗口附加到另一个进程的父窗口 |
 | viewporter | 演示 Wayland `wp_viewporter` 协议扩展，实现窗口内容缩放 |
+
+### cross-process/ - 跨进程窗口操作
+
+| 示例 | 说明 |
+|------|------|
+| target | 目标窗口程序，创建窗口并打印 HWND |
+| controller | 跨进程使用 `SetWindowPos`/`MoveWindow` 控制目标窗口位置和大小 |
 
 ### hello-* 系列
 
