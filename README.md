@@ -18,6 +18,8 @@
 │
 ├── cross-process/           # 跨进程窗口操作演示
 │
+├── tray-demo/               # 系统托盘演示
+│
 ├── hello-win/               # 基础 Win32 窗口示例，输出窗口几何信息
 ├── hello-edit/              # IME (Input Method Editor) 消息处理演示
 ├── hello-time/              # Windows 时间 API 演示 (GetLocalTime/GetSystemTime)
@@ -98,6 +100,12 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 |------|------|
 | target | 目标窗口程序，创建窗口并打印 HWND |
 | controller | 跨进程使用 `SetWindowPos`/`MoveWindow` 控制目标窗口位置和大小 |
+
+### tray-demo/ - 系统托盘
+
+| 示例 | 说明 |
+|------|------|
+| tray-demo | 演示系统托盘功能：托盘图标创建、右键菜单、窗口隐藏/显示 |
 
 ### hello-* 系列
 
