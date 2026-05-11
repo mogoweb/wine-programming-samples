@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shellapi.h>
+#include <stdio.h>
 
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_SHOW_WINDOW 1001
@@ -64,6 +65,7 @@ static void ShowContextMenu(HWND hwnd)
     AppendMenu(hMenu, MF_OWNERDRAW, ID_TRAY_EXIT, (LPCSTR)&menuItems[1]);
 
     SetForegroundWindow(hwnd);
+    fprintf(stderr, "pt.x = %ld, pt.y = %ld\n", pt.x, pt.y);
     TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
     DestroyMenu(hMenu);
 }
