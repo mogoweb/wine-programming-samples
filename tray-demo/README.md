@@ -18,13 +18,18 @@ cd tray-demo
 make
 ```
 
-生成文件：`tray-demo.exe`
+生成文件：
+- `tray-demo.exe` - 使用 TrackPopupMenu API 的版本
+- `tray-demo-menu-window.exe` - 使用自定义窗口模拟菜单的版本
 
 ## 运行
 
 ```bash
-# 普通 Wine
+# TrackPopupMenu 版本
 wine tray-demo.exe
+
+# 自定义菜单窗口版本
+wine tray-demo-menu-window.exe
 
 # Wine Wayland
 DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine tray-demo.exe
@@ -79,9 +84,25 @@ case WM_TRAYICON:
 
 通过自绘菜单可以指定字体，确保中文正确显示。
 
+### 自定义菜单窗口 (menu-window.c)
+
+不使用 TrackPopupMenu API，而是创建 WS_POPUP 窗口模拟弹出菜单：
+
+- 创建 `WS_EX_TOPMOST | WS_EX_TOOLWINDOW` 样式的弹出窗口
+- 手动处理 `WM_PAINT` 绘制菜单项
+- 处理 `WM_MOUSEMOVE` 实现悬停高亮
+- 处理 `WM_LBUTTONUP`/`WM_RBUTTONUP` 执行菜单命令
+- 使用 `SetCapture` 捕获鼠标，点击菜单外关闭
+
+优点：
+- 完全控制菜单外观和行为
+- 不依赖系统菜单 API
+- 便于调试 Wine/Wayland 菜单相关问题
+
 ## Wine/Wine Wayland 测试意义
 
 - 托盘图标显示和隐藏
 - 右键菜单弹出位置
 - 自绘菜单字体渲染
 - 窗口隐藏/显示状态切换
+- 自定义弹出窗口 vs TrackPopupMenu 行为对比
