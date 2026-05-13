@@ -19,6 +19,7 @@
 ├── cross-process/           # 跨进程窗口操作演示
 │
 ├── tray-demo/               # 系统托盘演示
+├── tray-alpha-demo/         # 带透明通道的托盘图标演示
 │
 ├── hello-win/               # 基础 Win32 窗口示例，输出窗口几何信息
 ├── hello-edit/              # IME (Input Method Editor) 消息处理演示
@@ -106,6 +107,7 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 | 示例 | 说明 |
 |------|------|
 | tray-demo | 演示系统托盘功能：托盘图标创建、右键菜单、窗口隐藏/显示 |
+| tray-alpha-demo | 演示带透明通道（Alpha Channel）的托盘图标显示 |
 
 ### hello-* 系列
 
