@@ -99,6 +99,23 @@ case WM_TRAYICON:
 - 不依赖系统菜单 API
 - 便于调试 Wine/Wayland 菜单相关问题
 
+### 自定义托盘图标
+
+程序启动时会尝试从 exe 同目录加载 `tray-icon.ico` 文件作为托盘图标：
+
+```
+程序目录/
+├── tray-demo.exe
+└── tray-icon.ico    # 可选的自定义图标
+```
+
+如果图标文件不存在，则使用系统默认图标。
+
+图标文件要求：
+- 格式：ICO 文件
+- 推荐尺寸：16x16 或 32x32 像素
+- 可包含多种尺寸以适应不同 DPI
+
 ## Wine/Wine Wayland 测试意义
 
 - 托盘图标显示和隐藏

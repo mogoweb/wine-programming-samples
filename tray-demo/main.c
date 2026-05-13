@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <stdio.h>
+#include <locale.h>
 
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_SHOW_WINDOW 1001
@@ -12,6 +13,10 @@ static NOTIFYICONDATA nid = {0};
 static HWND g_hwnd = NULL;
 static HFONT g_hFont = NULL;
 static HFONT g_hMenuFont = NULL;
+static HICON g_hTrayIcon = NULL;
+
+/* 默认图标文件路径 (相对于 exe 所在目录) */
+static const wchar_t *DEFAULT_ICON_FILE = L"tray-icon.ico";
 
 typedef struct {
     wchar_t *text;
@@ -36,14 +41,50 @@ static void CreateFonts(void)
     g_hMenuFont = CreateFontIndirect(&lf);
 }
 
+static HICON LoadTrayIcon(HINSTANCE hInstance)
+{
+    HICON hIcon = NULL;
+    char exePath[MAX_PATH];
+    char iconPath[MAX_PATH];
+
+    /* 获取 exe 所在目录 */
+    GetModuleFileNameA(hInstance, exePath, MAX_PATH);
+    fprintf(stderr, "[Tray] Exe path: %s\n", exePath);
+
+    char *lastSlash = strrchr(exePath, '\\');
+    if (lastSlash) {
+        *(lastSlash + 1) = '\0';
+        snprintf(iconPath, MAX_PATH, "%s%s", exePath, "tray-icon.ico");
+        fprintf(stderr, "[Tray] Icon path: %s\n", iconPath);
+
+        /* 尝试从文件加载图标 */
+        hIcon = (HICON)LoadImageA(NULL, iconPath, IMAGE_ICON,
+                                   GetSystemMetrics(SM_CXSMICON),
+                                   GetSystemMetrics(SM_CYSMICON),
+                                   LR_LOADFROMFILE);
+        if (hIcon) {
+            fprintf(stderr, "[Tray] Loaded icon from file: %s\n", iconPath);
+            return hIcon;
+        }
+        fprintf(stderr, "[Tray] LoadImageA failed, error: %lu\n", GetLastError());
+    }
+
+    /* 回退到系统默认图标 */
+    hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    fprintf(stderr, "[Tray] Using default system icon\n");
+    return hIcon;
+}
+
 static void CreateTrayIcon(HWND hwnd)
 {
+    g_hTrayIcon = LoadTrayIcon((HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE));
+
     nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.hWnd = hwnd;
     nid.uID = 1;
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
-    nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    nid.hIcon = g_hTrayIcon;
     wcscpy(nid.szTip, L"托盘演示程序");
 
     Shell_NotifyIcon(NIM_ADD, &nid);
@@ -168,6 +209,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     case WM_DESTROY:
         RemoveTrayIcon();
+        if (g_hTrayIcon) DestroyIcon(g_hTrayIcon);
         if (g_hFont) DeleteObject(g_hFont);
         if (g_hMenuFont) DeleteObject(g_hMenuFont);
         PostQuitMessage(0);
@@ -179,6 +221,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
+    setlocale(LC_ALL, "");
     CreateFonts();
 
     WNDCLASS wc = {0};
@@ -217,9 +260,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         L"STATIC",
         L"点击窗口关闭按钮将最小化到系统托盘\n\n"
         L"右键点击托盘图标可显示菜单\n"
-        L"双击托盘图标可显示窗口",
+        L"双击托盘图标可显示窗口\n\n"
+        L"将 tray-icon.ico 放在程序目录可自定义图标",
         WS_VISIBLE | WS_CHILD | SS_CENTER,
-        50, 80, 300, 80,
+        30, 60, 340, 100,
         g_hwnd,
         NULL,
         hInstance,
