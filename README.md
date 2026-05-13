@@ -18,8 +18,9 @@
 │
 ├── cross-process/           # 跨进程窗口操作演示
 │
-├── tray-demo/               # 系统托盘演示
-├── tray-alpha-demo/         # 带透明通道的托盘图标演示
+├── systray/                  # 系统托盘演示
+│   ├── tray-demo/               # 基础托盘演示
+│   └── tray-alpha-demo/         # 带透明通道的托盘图标演示
 │
 ├── hello-win/               # 基础 Win32 窗口示例，输出窗口几何信息
 ├── hello-edit/              # IME (Input Method Editor) 消息处理演示
@@ -102,7 +103,7 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 | target | 目标窗口程序，创建窗口并打印 HWND |
 | controller | 跨进程使用 `SetWindowPos`/`MoveWindow` 控制目标窗口位置和大小 |
 
-### tray-demo/ - 系统托盘
+### systray/ - 系统托盘
 
 | 示例 | 说明 |
 |------|------|
