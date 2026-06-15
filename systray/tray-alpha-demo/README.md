@@ -7,6 +7,7 @@
 - 加载带透明通道的 ICO 图标
 - 图标在系统托盘中正确显示透明效果
 - 支持多种图标尺寸（16/24/32/48/64）
+- 演示从完全透明到半透明图标的动态切换效果
 
 ## 编译
 
@@ -63,9 +64,22 @@ HICON hIcon = (HICON)LoadImageA(NULL, iconPath, IMAGE_ICON,
 
 `GetSystemMetrics(SM_CXSMICON)` 获取当前系统推荐的小图标尺寸。
 
+### 动态图标更新
+
+程序启动后 5 秒自动将图标从全透明切换为半透明：
+
+```c
+// 定时器 5 秒后触发
+SetTimer(hwnd, TIMER_ID_UPDATE_ICON, 5000, NULL);
+
+// WM_TIMER 处理中更新图标
+Shell_NotifyIcon(NIM_MODIFY, &nid);
+```
+
 ## Wine/Wine Wayland 测试意义
 
 - 透明通道图标的正确渲染
 - Alpha 混合效果
 - 不同 DPI 下的图标缩放
 - ICO 文件格式解析
+- 动态图标更新（NIM_MODIFY）
