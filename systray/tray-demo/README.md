@@ -123,3 +123,79 @@ case WM_TRAYICON:
 - 自绘菜单字体渲染
 - 窗口隐藏/显示状态切换
 - 自定义弹出窗口 vs TrackPopupMenu 行为对比
+
+## X11 参考实现 (x11-mouse.c)
+
+`x11-mouse.c` 是纯 X11 实现，不依赖 Windows API，用于对比理解托盘工作原理：
+
+### 编译
+
+```bash
+gcc -o x11-mouse x11-mouse.c -lX11
+./x11-mouse
+```
+
+### 核心概念
+
+#### _NET_SYSTEM_TRAY 协议
+
+X11 系统托盘遵循 [FreeDesktop.org System Tray 规范](https://www.freedesktop.org/wiki/Specifications/system-tray-specification/)：
+
+```c
+// 获取托盘管理器
+Atom tray_atom = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S0", False);
+Window tray = XGetSelectionOwner(dpy, tray_atom);
+
+// 请求停靠到托盘
+XEvent ev;
+ev.xclient.type = ClientMessage;
+ev.xclient.message_type = XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", False);
+ev.xclient.data.l[0] = CurrentTime;
+ev.xclient.data.l[1] = 0;  // SYSTEM_TRAY_REQUEST_DOCK
+ev.xclient.data.l[2] = tray_icon;  // 我们的图标窗口
+XSendEvent(dpy, tray, False, NoEventMask, &ev);
+```
+
+#### 托盘图标窗口
+
+```c
+// 创建小窗口作为托盘图标
+tray_icon = XCreateSimpleWindow(
+    dpy,
+    RootWindow(dpy, screen),
+    0, 0,
+    TRAY_ICON_SIZE, TRAY_ICON_SIZE,  // 22x22 像素
+    0, BlackPixel(dpy, screen),
+    WhitePixel(dpy, screen));
+
+XSelectInput(dpy, tray_icon,
+             ExposureMask | ButtonPressMask);
+
+// 处理鼠标事件
+case ButtonPress:
+    if (bev->button == Button1) {
+        show_main_window();       // 左键显示窗口
+    } else if (bev->button == Button3) {
+        show_menu(bev->x_root, bev->y_root);  // 右键显示菜单
+    }
+```
+
+#### Wine 的托盘实现
+
+Wine 在 Wayland 环境下需要通过类似方式与系统托盘交互：
+
+| Windows API | X11 等价实现 |
+|-------------|-------------|
+| `Shell_NotifyIcon(NIM_ADD)` | `XGetSelectionOwner` + `XSendEvent` |
+| `NOTIFYICONDATA.hWnd` | 事件路由到对应窗口 |
+| `NIM_MODIFY` | 更新托盘窗口内容 |
+| `NIM_DELETE` | `XDestroyWindow` |
+
+### 功能对比
+
+| 功能 | x11-mouse.c | Windows |
+|------|-------------|---------|
+| 托盘图标 | ✅ | ✅ |
+| 左键点击 | ✅ 显示窗口 | ✅ |
+| 右键菜单 | ✅ 简单菜单窗口 | ✅ TrackPopupMenu |
+| 窗口隐藏 | ✅ XUnmapWindow | ✅ ShowWindow(SW_HIDE) |
