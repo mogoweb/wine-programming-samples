@@ -22,6 +22,9 @@
 │   ├── tray-demo/               # 基础托盘演示
 │   └── tray-alpha-demo/         # 带透明通道的托盘图标演示
 │
+├── ie/                       # Internet Explorer / WebBrowser 控件示例
+│   └── call_external/           # WebBrowser Host + window.external 实现
+│
 ├── hello-win/               # 基础 Win32 窗口示例，输出窗口几何信息
 ├── hello-edit/              # IME (Input Method Editor) 消息处理演示
 ├── hello-time/              # Windows 时间 API 演示 (GetLocalTime/GetSystemTime)
@@ -109,6 +112,14 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 |------|------|
 | tray-demo | 演示系统托盘功能：托盘图标创建、右键菜单、窗口隐藏/显示 |
 | tray-alpha-demo | 演示带透明通道（Alpha Channel）的托盘图标显示 |
+
+### ie/ - Internet Explorer / WebBrowser 控件
+
+演示如何使用纯 Win32 API 嵌入 IE 控件，实现 JavaScript 与 C++ 的双向通信。
+
+| 示例 | 说明 |
+|------|------|
+| call_external | WebBrowser Host 实现，支持 `window.external` 调用 C++ 函数 |
 
 ### hello-* 系列
 

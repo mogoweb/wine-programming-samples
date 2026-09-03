@@ -12,6 +12,7 @@ This repository contains Windows programming samples used to study Wine/Wine Way
 - Vulkan integration
 - CEF (Chromium Embedded Framework) integration
 - Time/timer examples
+- Internet Explorer / WebBrowser control embedding
 
 ## Building
 
@@ -77,6 +78,7 @@ Each sample is an independent directory with its own Makefile. No common build s
 - **hello-win/**: Basic Win32 window example with geometry output
 - **hello-edit/**: IME (Input Method Editor) message handling demonstration
 - **hello-cef/**: Minimal CEF integration with embedded browser SDK in `sdk/`
+- **ie/call_external/**: WebBrowser Host with window.external JavaScript-to-C++ communication
 
 ## Commit Message Rules
 

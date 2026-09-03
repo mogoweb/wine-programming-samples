@@ -1,0 +1,831 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>登录</title>
+<script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+<script type="text/javascript" src="js/qasui.js"></script>  
+<script type="text/javascript" src="js/cookies.js" ></script>
+<script>
+QASUI.adjustwh(494,353);
+QASUI.setcenter();
+</script>
+<script>
+var preCode ;
+var accCode ;
+var pwd ;
+var currareaId ;
+var currcounterId ;
+var currcounterName;
+var flag=false;
+
+$(function(){
+	
+	$('#accCode').focusout(function(){
+		var code = Trim($(this).val());
+		if(!!code){	
+			if(code != preCode){	
+				currareaId = null ;
+				currcounterId = null;
+				currcounterName = null;			
+				$('#counter').text('');
+				$('.seldiv2').text('');		
+				$('#pwd').val('');
+				$('.box[uid=2]').each(function(){
+					$(this).removeClass('box_checked').attr('uid',1);
+				});
+				listareas(code);														
+			}
+		}else{	
+			currareaId = null ;
+			currcounterId = null;
+			currcounterName = null;
+			$('#pwd').val('');
+			$('#area').text('');
+			$('#counter').text('');
+			$('.seldiv').text('');
+			$('.seldiv2').text('');	
+			$('.box[uid=2]').each(function(){
+				$(this).removeClass('box_checked').attr('uid',1);
+			});
+		}
+		preCode = code;
+	});
+	
+	
+	
+	$('#btn_exit').click(function(){ 
+		QASUI.setmodalresult(2);
+	});
+	$('#btn_x').click(function(){
+		QASUI.setmodalresult(2);
+	});
+	$('#movehandler').mousedown(function(){
+		QASUI.dragwindow();
+	});
+	$('#btn_login').click(function(){
+		$('#btn_login').attr('disabled', true);
+		accCode = $('#accCode').val();
+		pwd = $('#pwd').val(); 
+		if(!accCode){
+			alert('请输入用户账号');
+			$('#btn_login').attr('disabled', false);
+			return ;
+		}else if(!pwd){
+			alert('请输入密码');
+			$('#btn_login').attr('disabled', false);
+			return;
+		}else if(!currcounterId){
+			alert('不可登录');
+			$('#btn_login').attr('disabled', false);
+			return;
+		}else if(flag){
+			alert('用户不存在');
+			$('#btn_login').attr('disabled', false);
+			return;
+		}
+		DoLogin();
+	});
+
+	$('#btn_x').hover(
+		function(){			
+			$(this).addClass('btn_x_hover');
+		},		
+		function(){
+			$(this).removeClass('btn_x_hover');
+		}
+	);
+	$('.tdinput').hover(
+			function(){$(this).addClass('text_hover');},
+			function(){$(this).removeClass('text_hover');}
+	);
+ 	$('#select1').hover(
+ 		function(){
+			$(this).addClass('s1_hover');
+		},
+		function(){
+			$(this).removeClass('s1_hover');
+		}
+	);
+
+	$('#select1 .selbtn').mousedown(function(){
+		var cid = $('.seldiv').attr('uid');
+		if(1 == cid){
+			$(this).addClass('selbtn_click');
+			$('.seldiv').show();
+			$('.seldiv').attr('uid',2);
+			$('.seldiv').focus();
+		}else{
+			$(this).removeClass('selbtn_click');	
+			$('.seldiv').attr('uid',1);
+			$('.seldiv').hide();
+		}
+		
+	});
+	$('.seldiv').focusout(function(){
+		$('#select1 .selbtn').removeClass('selbtn_click');
+		$(this).attr('uid',1);
+		$(this).hide();
+	});
+	$('#select2').hover(
+		function(){
+			$(this).addClass('s2_hover');
+		},
+		function(){
+			$(this).removeClass('s2_hover');
+		}
+	);
+	$('.selbtn').hover(
+			function(){
+				$(this).addClass('selbtn_hover');
+			},
+			function(){
+				$(this).removeClass('selbtn_hover');
+			}
+	);
+	
+	$("#select2 .selbtn").mousedown(function(){ 
+		var cid = $('.seldiv2').attr('uid'); 
+		if(1 == cid){
+			$(this).addClass('selbtn_click');
+			$('.seldiv2').show();
+			$('.seldiv2').attr('uid',2);
+			$('.seldiv2').focus();
+		}else{
+			$(this).removeClass('selbtn_click');			
+			$('.seldiv2').attr('uid',1);
+			$('.seldiv2').hide();
+		}
+		
+	});
+	$('.seldiv2').focusout(function(){
+		$("#select2 .selbtn").removeClass('selbtn_click');
+		$(this).attr('uid',1);
+ 		$(this).hide();
+	});
+	
+	$("#savepwd").click(function(){
+		if(1 == $(this).attr("uid")){
+			$(this).addClass('box_checked').attr('uid',2);
+		}else{
+			$(this).removeClass('box_checked').attr('uid',1);
+			if(2 == $("#autologin").attr("uid")){
+				$("#autologin").removeClass('box_checked').attr('uid',1);
+			}
+		} 	
+	});
+	$("#autologin").click(function(){
+		if(1 == $(this).attr("uid")){
+			$(this).addClass('box_checked').attr('uid',2);
+			if(1 == $("#savepwd").attr("uid")){
+				$("#savepwd").addClass('box_checked').attr('uid',2);
+			}
+		}else{
+			$(this).removeClass('box_checked').attr('uid',1);
+		} 	
+	});
+	$("#autohide").click(function(){
+		if(1 == $(this).attr("uid")){
+			$(this).addClass('box_checked').attr('uid',2);
+		}else{
+			$(this).removeClass('box_checked').attr('uid',1);
+		} 	
+	});
+	//初始化	
+	init();	
+});
+
+function init(){
+	$.ajax({
+		url:'uac/findByKey.json?key=copyright',
+		cache: false,
+		type:'GET',
+		dataType: 'json',
+		success: function(data) {
+			if (!!data && !!data.Data) {
+				$("#copyright").text(data.Data.value);
+			}
+		}
+	});
+	accCode = !!getCookie("accCode") ? getCookie("accCode") : null ;
+	pwd = !!getCookie("password") ? getCookie("password") : null ;
+	currareaId = !!getCookie("areaId") ? getCookie("areaId") : null ;
+	currcounterId = !!getCookie("counterId") ? getCookie("counterId") : null ;	
+	currcounterName = !!getCookie("counterName") ? getCookie("counterName"):null;
+	if(!!accCode){ 
+		$('#accCode').val(accCode);
+		preCode = accCode;
+		listareas(accCode);
+	}else{
+		$('#accCode').focus();
+	}
+	if(!!getCookie("savepwd")){
+		$("#savepwd").addClass('box_checked').attr('uid',2);
+		$('#pwd').val(pwd);
+	}
+	if(!!getCookie("autohide")){
+		$("#autohide").addClass('box_checked').attr('uid',2);
+	}    
+
+	if(!!getCookie("autologin")){
+		$("#autologin").addClass('box_checked').attr('uid',2);
+		if(GetParame("fromLogout")==0){
+			setTimeout(function(){
+				DoLogin();
+			},5);
+		}
+	}
+}
+
+function DoLogin(){
+	var data = {};
+	data['accCode'] = accCode;
+	data['pwd'] = pwd;
+	data['counterId'] = currcounterId ;			
+	var xhr = $.ajax({
+		url:'uac/login.json',
+		data: data,
+		cache: false,
+		type:'POST',
+		dataType: 'json'
+	});
+	xhr.done(function(data){
+		if(data['Code'] == '0'){
+			var d = data['Data'];
+			var accName = d.accName;
+			var counterName = d.counterName;
+			var counterFunc = d.counterFunc;
+			setCookie("accCode",accCode,getExpDate(30,0,0));
+			setCookie("areaId",currareaId,getExpDate(30,0,0));
+			setCookie("counterId",currcounterId,getExpDate(30,0,0));
+			setCookie("counterName",currcounterName,getExpDate(30,0,0));
+			setCookie("password",pwd,getExpDate(30,0,0));
+
+
+			$('.box').each(function(){
+				if(2 == $(this).attr('uid')){
+					if(!getCookie($(this).attr('id'))){
+						setCookie($(this).attr('id'),2,getExpDate(30,0,0));
+					}
+				}else{
+					deleteCookie($(this).attr('id'));
+				}
+				
+			});
+			
+			var infoFlag = 2;
+			var countDownFlag = 1;
+			var autoHideFlag = 1;
+			var dealInfoType = 1;
+			var autoPopupNoteDetail = 1;
+			var countDownWithSecFlag = 1;
+
+			if(!!getCookie('displayInfo')){
+				infoFlag = getCookie('displayInfo');
+			}else{
+				setCookie('displayInfo',2,getExpDate(30,0,0));
+			}
+			// 暂时强制禁用倒计窗口
+			//setCookie('displayCountDown',1,getExpDate(30,0,0));
+			
+			if(!!getCookie('displayCountDown')){
+				countDownFlag = getCookie('displayCountDown');
+			}else{
+				setCookie('displayCountDown',1,getExpDate(30,0,0));
+			}
+			
+			if(!!getCookie('displayCountDownWithSec')){
+				countDownWithSecFlag = getCookie('displayCountDownWithSec');
+			}else{
+				setCookie('displayCountDownWithSec',1,getExpDate(30,0,0));
+			}
+
+			if(!!getCookie('autoHide')){
+				autoHideFlag = getCookie('autoHide');
+			}else{
+				setCookie('autoHide',1,getExpDate(30,0,0));
+			}
+			
+			if(!!getCookie('dealInfoType')){
+				dealInfoType = getCookie('dealInfoType');
+			}else{
+				setCookie('dealInfoType',1,getExpDate(30,0,0));
+			}
+			
+			if(!!getCookie('autoPopupNoteDetail')){
+				autoPopupNoteDetail = getCookie('autoPopupNoteDetail');
+			}else{
+				setCookie('autoPopupNoteDetail',1,getExpDate(30,0,0));
+			}
+			//hiddenTItemName的值为2表示隐藏业务名称
+			var hiddenTItemName = d.hiddenTItemName;
+			if(!!hiddenTItemName && hiddenTItemName === 2){
+				QASUI.setWaitCountShowType(hiddenTItemName);
+			}
+			QASUI.setuasession(d.sessionId);
+			QASUI.setmodalresult(1);
+			QASUI.enableinfowindow(infoFlag);
+			QASUI.enablecountdownwindow(countDownFlag);
+			QASUI.enableautohide(autoHideFlag);
+			QASUI.setDealInfoType(dealInfoType);
+			QASUI.enableCountDownWithSec(countDownWithSecFlag);
+			QASUI.enableAutoPopupNoteDetail(autoPopupNoteDetail);
+		}else{
+			alert(data['Message']);
+		}
+		$('#btn_login').attr('disabled', false);
+	}).fail(function(xhr, statue, error){
+		$('#btn_login').attr('disabled', false);
+		alert(error);
+	});
+}
+function Trim(str){ 
+	var result = str.replace(/(^\s+)|(\s+$)/g,"");
+	return result.replace(/\s/g, ""); 
+}
+function listareas(code){ 
+	$.ajax({
+		url:'uac/getareas.json?accCode='+code,
+		cache:false,
+		aysnc:false,
+		dataType: 'json',
+		success:function(data){
+			var d = data.Data; 
+			$('#area').text('');
+			$('.seldiv').text('');
+			$('.seldiv').removeClass('div_height');
+			if(!!d&&null!=d&&""!=d){
+				flag=false;
+				var areatext = '';
+				var temp = "<div><ul>" ;
+				for(i=0;i<d.length;i++){
+					var areaId = d[i].areaId;  
+					var areaName = d[i].areaName;
+					if(!!currareaId){
+						if(currareaId == areaId){
+							$("#area").text(areaName);
+						}
+					}else{
+						if(0 == i){
+							$("#area").text(areaName);
+							currareaId = areaId;
+						}
+					}
+					temp += '<li class="areali" id="'+areaId+'">'+areaName+'</li>';									
+				}
+				temp += "</ul></div>";
+				$('.seldiv').html(temp);
+				
+				var areaheight = $('.seldiv').height();
+				if(areaheight > 103){
+					$('.seldiv').addClass('div_height');
+				}
+				
+				$(".areali").hover(
+					function(){$(this).addClass('li_bgcolor');},		
+					function(){$(this).removeClass('li_bgcolor');}
+				);
+				$(".areali").click(function(e){
+					$("#select1 .selbtn").removeClass('selbtn_click');  
+					var temp = $(this).attr('id');  
+					if(temp != currareaId){ 						
+						$("#area").text($(this).text()); 
+						currcounterId = null;
+						currcounterName = null ;
+						listcounters(temp);
+						currareaId = temp;
+					}
+					$('.seldiv').hide();	
+				});
+				if(!!currareaId){
+					listcounters(currareaId);
+				}
+			}else{
+				flag=true;
+				//deleteCookie("autologin");
+				removeCookie("autologin");
+				alert("用户不存在");
+			}
+		}
+	});   
+
+}
+//获取URL传递参数
+function GetParame(name) { 
+	var s = document.location.search;
+	var r = new RegExp("^\\?(?:" + name + "=|.+=.*&" + name + "=)([^&]+).*",
+			"i");
+	if (r.test(s)) {
+		return s.replace(r, "$1");
+	} else {
+		return "";
+	}
+}
+function listcounters(aid){
+	$.ajax({
+		url:'uac/getareacounters.json?areaId='+aid,
+		cache:false,
+		aysnc:false,
+		dataType: 'json',
+		success:function(data){  
+			var d = data.Data; 
+			if(!!currcounterName){
+				$('#counter').text(currcounterName);
+			}else{
+				$('#counter').text('');
+			}
+			$('.seldiv2').text('');
+			$('.seldiv2').removeClass('div_height');
+			if(!!d){
+				var t = "<ul>" ;
+				for(i=0;i<d.length;i++){
+					var counId = d[i].counterId;
+					var counName = d[i].counterName;  
+					if( !currcounterId && 0 == i){
+						$("#counter").text(counName);
+						currcounterId = counId;
+						currcounterName = counName;					
+					}
+					t += '<li class="counterli" id="'+counId+'">'+counName+'</li>';																
+				}
+				t += "</ul>";
+				$('.seldiv2').html(t);
+				
+				var areaheight = $('.seldiv2').height();
+				if(areaheight > 103){
+					$('.seldiv2').addClass('div_height');
+				}
+				
+				$(".counterli").hover(
+						function(){$(this).addClass('li_bgcolor');},		
+						function(){$(this).removeClass('li_bgcolor');}
+					);
+				$(".counterli").click(function(){
+						currcounterId = $(this).attr('id');
+						currcounterName = $(this).text();
+						$("#counter").text($(this).text());
+						doCounter(currcounterId);
+						$('.seldiv2').hide();	
+						$("#select2 .selbtn").removeClass('selbtn_click');
+
+				});
+
+			}
+		}
+		
+	});
+}
+
+function doCounter(counterId) {
+	$.ajax({
+		url:'uac/TaskSoecItemByCounterId.json?counterId='+counterId,
+		cache : false,
+		aysnc : false,
+		dataType : 'json',
+		success : function(data){
+			if (data['Data']==1){
+				alert("您选择登录的窗口没有可办理业务")
+			}
+		}
+	})
+}
+
+function canSelect() {
+	window.event.cancelBubble = true;
+	window.event.returnValue = true; 
+	return true;
+}
+</script>
+<style type="text/css">
+	body{
+		width:497px;
+		height:355px;
+		background:url('images/bg1_login.jpg') -2px -1px no-repeat;
+		margin:0px;	
+		padding:0px;	
+	}
+	div{
+		margin:0px;
+		padding:0px;		
+	}
+	#titlebar{
+		width:497px;
+		height:20px;
+	}
+	#movehandler{
+		width:455px;
+		height:20px;
+		cursor:move;
+		float:left;
+		display: inline;
+	}
+	#btn_x{
+		width:39px;
+		height:20px;
+		margin-left:-2px; 
+ 		margin-top:-1px;  
+		float:right;
+	}
+	.btn_x_normal{
+		background:url('images/btn_close1.png') no-repeat;	
+	}
+	.btn_x_hover{
+		background:url('images/btn_close2.png') no-repeat;
+		cursor:hand;
+	}
+	
+	#top{		
+		width:497px;
+		height:50px;
+	}
+	#title{
+		float:right;
+		width:407px;
+		height:50px;
+		font-size: 20px; 
+ 		color:white; 
+		margin-left:10px;			
+		font-family:'SimHei',serif;
+		font-weight:bold;	
+	}
+	.dcenter{
+		width:430px;
+		margin-left:50px;
+		margin-top:70px;
+	}
+	table{
+		width:380px;
+		font-size: 16px;		
+	}
+	tr{
+			height:30px;
+		}
+	.alt1{
+		width:120px;
+		/*filter:DropShadow(color="#ffffff",OffX="0",OffY="1",Positive="2") ;*/
+	}
+	.tdinput{
+		width:276px;
+		height:30px;
+		background:url('images/input1.gif') no-repeat;
+		padding-left:6px;
+		padding-right:6px;
+	}
+	input.textbox{
+		width:258px;
+		height:24px;
+		border:0px;	
+		line-height:24px;	
+		margin-left:1px;
+/* 		text-indent: 1em; */
+		background-color:transparent;
+		letter-spacing:1px;		
+	}
+	.text_hover{			
+		background:url('images/input2.gif') no-repeat;	
+								
+	}	
+	.s1_normal{
+		background:url('images/select11.gif') no-repeat;
+	}
+	.s1_hover{
+		background:url('images/select12.gif') no-repeat;	
+	}
+	.s2_normal{
+		background:url('images/select21.png') no-repeat;
+	}
+	.s2_hover{
+		background:url('images/select22.png') no-repeat;	
+	}
+	#select1{
+		width:177px;
+		height:31px;					
+	}
+	#area{
+		width:145px;
+		height:26px;
+		overflow:hidden;
+		position:relative;	
+		font-size:14px;
+		line-height:26px;
+		margin-left:6px;
+		vertical-align:middle;
+	}
+	#counter{
+		width:66px;
+		height:26px;		
+		font-size:14px;
+		line-height:26px;
+		margin-left:6px;
+		vertical-align:middle;
+	}
+	.selbtn{
+		width:24px;
+		heigth:31px;
+		margin-right:2px;	
+		cursor: hand;
+		zoom:1;
+		font-size:26px;
+		margin-top:1px;
+	}
+	.selbtn_exitrmal{
+		background:url('images/selbtn1.png') no-repeat;
+	}
+	.selbtn_hover{
+		background:url('images/selbtn2.png') no-repeat;		
+	}
+	.selbtn_click{
+		background:url('images/selbtn3.png') no-repeat;
+		margin-top:1px;
+	}
+	#select2{
+		width:98px;
+		height:31px;
+	}
+	.seldiv{
+		width:173px;
+		margin-left:-150px;		
+	}
+	.seldiv2{
+		width:93px;
+		margin-left:-70px;		
+	}
+	.seldiv , .seldiv2{	
+		border: 1px solid #8EC8EF; 	
+		margin-top:31px;	
+		display:none;
+		position:absolute;		
+		Z-INDEX:9999;
+		font-weight:normal;
+		background:#ffffff;	
+		cursor: hand;	
+	}
+	.div_height{
+		height:103px;
+		overflow-y:auto; 
+		overflow-x:hidden;
+	}
+	ul{
+		padding:0px;
+		margin:0px;
+	}
+	.areali{
+		width:163px;
+		padding-left:5px;
+		padding-top:5px;
+		padding-right:5px;
+		padding-bottom:5px;
+		font-size:12px;
+		list-style-type:none;		
+	}
+	.counterli{
+		width:83px;
+		padding-left:5px;
+		padding-top:5px;
+		padding-right:5px;
+		padding-bottom:5px;				
+		font-size:12px;
+		list-style-type:none;	
+	}
+	.li_bgcolor{
+		background-color:#DDDDDD; 	
+	}
+	#btnfield{
+		width:250px;
+		height:32px;
+		margin-top:20px;
+		margin-left:219px;
+		
+	}
+	#btn_login{
+		width:80px;
+		height:32px;			
+		display:inline;
+		cursor:hand;
+		zoom:1;
+	}
+	.yes_normal{
+		background:url(images/login1.png) no-repeat;
+	}
+	.yes_over{
+		background:url(images/login3.png) no-repeat;
+	}
+	.yes_click{
+		background:url(images/login2.png) no-repeat;
+	}
+	#btn_exit{
+		width:80px;
+		height:32px;
+		display:inline;
+		zoom:1;
+		margin-left:35px;
+		cursor:hand;
+	}
+	.no_normal{
+		background:url(images/no.png) no-repeat;
+	}
+	.no_over{
+		background:url(images/no3.png) no-repeat;
+	}
+	.no_click{
+		background:url(images/no1.png) no-repeat;
+	}
+	#version{
+		width:497px;
+		height:20px;
+		text-align:center;
+		margin-top:20px;
+		font-size:12px;
+		word-spacing:3pt;
+		color:#494949;	
+	}
+	.boxes{
+		text-align:right;
+		margin-right:38px;
+		margin-top:-3px;
+	}
+	.boxes label{
+		height:16px;
+		line-height:16px;
+		margin-left:5px;
+		font-size:12px;
+		cursor:hand;
+		/*filter:DropShadow(color="#ffffff",OffX="0",OffY="2",Positive="2") ;*/
+	}
+	.box_uncheck{
+		background:url('images/gou1.png') no-repeat;
+	}
+	.box_checked{
+		background:url('images/gou2.png') no-repeat;
+	}
+	.box{
+		width:16px;
+		height:16px;
+		display:inline;
+		zoom:1;
+		cursor:hand;
+	}
+	#select1, #select2 ,#area ,#counter , .selbtn{
+		display:inline;
+		zoom:1;
+	}	
+</style>
+</head>
+<body onselectstart="javascript: return false;">
+<div>
+<div id="titlebar">
+	<div id="movehandler"></div>
+	<div id="btn_x" class="btn_x_normal"></div>
+</div>	
+<!--  
+<div id="top">
+	<div><img src="images/login_logo.gif" style="width:70px;height:85px;margin-left:10px;float:left;"/></div>
+	<div id="title"><p>公共管理系统服务终端</p><p><font size="2px;" >Public Management System Terminals  第二代 v3.0</font></p></div>
+</div>
+-->
+<div class="dcenter">
+	<div style="margin-left:auto;width:100px;font: 14px 'Trebuchet MS', Verdana, Arial, Helvetica, sans-serif; ">
+			 <a href="releasepage.html">更新说明</a>
+	</div>
+	<table cellspacing="10" align="center" >
+		<tr>
+			<td class="alt1">用户账号</td>
+			<td class="tdinput"><input type="text" id="accCode" class="textbox" onselectstart="canSelect()"/></td>
+		</tr>
+		<tr>
+			<td class="alt1">密码</td>
+			<td class="tdinput"><input type="password" id="pwd" class="textbox" onselectstart="canSelect()"/></td>
+		</tr>
+		<tr>
+			<td class="alt1">选择窗口</td>
+			<td>
+				<div id="select1" class='s1_normal'>
+					<div id='area' ></div>
+					<div class="seldiv" uid="1"></div>
+ 					<div class="selbtn selbtn_exitrmal"></div>
+				</div>
+				<div id="select2" class='s2_normal'>
+					<div id='counter'></div>
+					<div class="seldiv2" uid="1"></div>
+ 					<div class="selbtn selbtn_exitrmal"></div>
+				</div>
+			</td>
+		</tr>	
+	</table>	
+	<div class="boxes">
+		<div id="savepwd" class="box box_uncheck" uid="1"></div><label for="savepwd">保存密码</label>
+		<div id="autologin" class="box box_uncheck" uid="1"></div><label for="autologin">自动登录</label>
+		<!--  <div id="autohide" class="box box_uncheck" uid="1"></div><label for="autohide">自动隐藏</label> -->
+	</div>
+
+</div>
+<div id="btnfield">
+	<div id="btn_login" class="yes_normal" onmouseover="this.className = 'yes_over'"  onmouseout="this.className = 'yes_normal'" onclick="this.className = 'yes_click'"></div>
+	<div id="btn_exit" class="no_normal" onmouseover="this.className = 'no_over'"  onmouseout="this.className = 'no_normal'" onclick="this.className = 'no_click'"></div>
+</div>
+<div id="version">
+Copyright (c) <span id="copyright">2012 广州睿盟计算机科技</span><!--河北地税res屏蔽此信息  -->
+</div>
+</div>
+</body>
+</html>
