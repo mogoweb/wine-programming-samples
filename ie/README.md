@@ -1,12 +1,13 @@
 # IE (Internet Explorer) 相关示例
 
-本目录包含 Internet Explorer / WebBrowser 控件编程示例，用于研究 Wine/Wine Wayland 的兼容性。
+本目录包含 Internet Explorer / WebBrowser 控件编程示例，用于研究 Wine 的兼容性。
 
 ## 示例列表
 
-| 示例 | 描述 | 编译产物 |
-|------|------|----------|
+| 示例 | 描述 | 产物 |
+|------|------|------|
 | [call_external](./call_external/) | WebBrowser Host + window.external 实现 | `qahost.exe` |
+| [pageoffice](./pageoffice/) | PageOffice 5.x ActiveX 控件内嵌演示（测试页 + 客户端安装程序，无源码） | `test.html` / `posetup.exe` |
 
 ## 快速开始
 
@@ -77,7 +78,7 @@ window.external.doCommand('close_window', {});
 | `IDocHostUIHandler` | 自定义 UI 行为（上下文菜单、键盘加速键等） |
 | `IOleInPlaceFrame` | 框架窗口支持（菜单、工具栏集成） |
 
-## Wine/Wine Wayland 测试要点
+## Wine 测试要点
 
 | 功能 | 测试目标 |
 |------|----------|
@@ -89,10 +90,10 @@ window.external.doCommand('close_window', {});
 | 窗口尺寸同步 | WM_SIZE 时 SetObjectRects 是否生效 |
 | COM 生命周期 | 引用计数管理是否正确 |
 
-## Wine Wayland 运行命令
+## Wine 运行命令
 
 ```bash
-DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine qahost.exe
+wine qahost.exe
 ```
 
 ## 目录结构
@@ -100,14 +101,18 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine qahost.exe
 ```
 ie/
 ├── README.md
-└── call_external/
-    ├── qahost.c              # WebBrowser Host 完整实现
-    ├── loginpage.html        # 示例 HTML 页面（演示 JavaScript 交互）
-    ├── Makefile
-    ├── js/
-    │   ├── jquery-1.7.2.js   # jQuery 库
-    │   ├── jquery-1.7.2.min.js
-    │   └── qasui.js          # JavaScript 桥接库
+├── call_external/
+│   ├── qahost.c              # WebBrowser Host 完整实现
+│   ├── loginpage.html        # 示例 HTML 页面（演示 JavaScript 交互）
+│   ├── Makefile
+│   ├── js/
+│   │   ├── jquery-1.7.2.js   # jQuery 库
+│   │   ├── jquery-1.7.2.min.js
+│   │   └── qasui.js          # JavaScript 桥接库
+│   └── README.md
+└── pageoffice/
+    ├── test.html             # PageOffice ActiveX 内嵌测试页
+    ├── posetup.exe           # PageOffice 5.x 客户端安装程序（32 位）
     └── README.md
 ```
 

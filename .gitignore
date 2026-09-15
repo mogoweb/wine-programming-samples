@@ -35,6 +35,8 @@
 *.i*86
 *.x86_64
 *.hex
+# Exception: PageOffice client installer (stored via Git LFS)
+!ie/pageoffice/posetup.exe
 
 # Debug files
 *.dSYM/

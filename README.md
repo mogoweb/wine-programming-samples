@@ -120,6 +120,7 @@ DISPLAY= WAYLAND_DISPLAY=wayland-1 WINEFSYNC=1 wine sample.exe
 | 示例 | 说明 |
 |------|------|
 | call_external | WebBrowser Host 实现，支持 `window.external` 调用 C++ 函数 |
+| pageoffice | PageOffice 5.x ActiveX 控件内嵌演示（测试页 + 客户端安装程序） |
 
 ### hello-* 系列
 
