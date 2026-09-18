@@ -1,0 +1,56 @@
+/*
+ * framerapp.rc - menu template for the DsoFramer C++ test client.
+ * Mirrors the VB6 FTestApp.frm menus (minimal core subset).
+ */
+#include <windows.h>
+#include "resource.h"
+
+IDR_MAINMENU MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New...",                     IDM_FILE_NEW
+        MENUITEM "&Open...",                    IDM_FILE_OPEN
+        MENUITEM "C&lose",                      IDM_FILE_CLOSE
+        MENUITEM SEPARATOR
+        MENUITEM "&Save",                       IDM_FILE_SAVE
+        MENUITEM "Save &As...",                 IDM_FILE_SAVEAS
+        MENUITEM SEPARATOR
+        MENUITEM "Page Set&up...",              IDM_FILE_PAGESETUP
+        MENUITEM "Print Pre&view",              IDM_FILE_PRINTPREVIEW
+        MENUITEM "P&rint (Default)",            IDM_FILE_PRINT
+        MENUITEM SEPARATOR
+        MENUITEM "Propert&ies...",              IDM_FILE_PROPERTIES
+        MENUITEM SEPARATOR
+        MENUITEM "&Quit Application",           IDM_FILE_QUIT
+    END
+    POPUP "&Show"
+    BEGIN
+        MENUITEM "&Caption",                    IDM_SHOW_CAPTION
+        MENUITEM "&Menubar",                    IDM_SHOW_MENUBAR
+        MENUITEM "&Toolbar",                    IDM_SHOW_TOOLBAR
+        MENUITEM SEPARATOR
+        POPUP "&Border Style"
+        BEGIN
+            MENUITEM "&None",                   IDM_SHOW_BORDER_NONE
+            MENUITEM "&Outline (default)",      IDM_SHOW_BORDER_OUTLINE
+            MENUITEM "3D &Frame",               IDM_SHOW_BORDER_3D
+            MENUITEM "3D Frame &Thin",          IDM_SHOW_BORDER_3DTHIN
+        END
+        MENUITEM SEPARATOR
+        POPUP "&Disable File Menu Item"
+        BEGIN
+            MENUITEM "&New",                    IDM_SHOW_DISABLE_FIRST + 0
+            MENUITEM "&Open",                   IDM_SHOW_DISABLE_FIRST + 1
+            MENUITEM "&Close",                  IDM_SHOW_DISABLE_FIRST + 2
+            MENUITEM "&Save",                   IDM_SHOW_DISABLE_FIRST + 3
+            MENUITEM "Save &As",                IDM_SHOW_DISABLE_FIRST + 4
+            MENUITEM "&Print",                  IDM_SHOW_DISABLE_FIRST + 5
+            MENUITEM "Page Set&up",             IDM_SHOW_DISABLE_FIRST + 6
+            MENUITEM "Propert&ies",             IDM_SHOW_DISABLE_FIRST + 7
+            MENUITEM "Print Pre&view",          IDM_SHOW_DISABLE_FIRST + 8
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Custom Caption...",          IDM_SHOW_CUSTOMCAPTION
+    END
+END
