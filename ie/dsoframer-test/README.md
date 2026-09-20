@@ -67,11 +67,26 @@ Windows 下行为正常，Wine/deepin-wine 下观察到以下差异（待深挖�
      通知，保持旧尺寸直到鼠标滑过触发局部重绘。Windows 上 WPS 会走
      UI-active 流程，故无此问题。
 
-   绕过（`main.cpp` 的 `SyncEmbeddedServerWindow`）：宿主在布局后枚举
+   绕过（`main.cpp` 的 `SyncEmbeddedServerWindow`，由
+   `DISABLE_WINE_SERVER_SYNC` 编译开关控制）：宿主在布局后枚举
    `DSOFramerDocWnd` 的 QWidget 子窗口，用 `SetWindowPos` 推到 DocWnd
    客户区尺寸。注意跨进程 `SetWindowPos` 不能在 `WM_SIZE` 内联执行
    （Wine 下会阻塞 UI 线程导致菜单卡死），必须 `PostMessage` 延迟 +
    `SWP_ASYNCWINDOWPOS`，并按尺寸去重。Windows 上该调用是 no-op。
+
+   **Wine 层根因与修复（2026-09）**：真正的断点在
+   `dlls/ole32/usrmarshal.c` ——
+   `IOleInPlaceActiveObject_ResizeBorder_Proxy/_Stub` 是 `E_NOTIMPL`
+   空壳（上游 Wine 至今未实现），控件跨进程调用 `ResizeBorder` 被
+   proxy 静默吞掉（+ole/+rpc trace 证实调用发生但 RPC 从未发出）。
+   deepin-wine10-stable 补丁
+   `e94ae9efd9e "ole32: Implement IOleInPlaceActiveObject::ResizeBorder
+   proxy/stub"` 实现了 proxy（按 fFrameWindow 推导 riid 转发
+   RemoteResizeBorder_Proxy）和 stub（参数透传）后，resize/最大化
+   在禁用应用层 workaround 的情况下原生工作。
+   Toggle Toolbar 不刷新是另一独立问题：`Exec(OLECMDID_HIDETOOLBARS)`
+   RPC 全链路正常送达，WPS 内部布局也已更新，只是 Qt 子窗口未触发
+   重绘（鼠标滑过才画）——属于 wine 窗口管理/重绘层，与 OLE 无关。
 
 调试辅助：`wininfo.c` / `framerprobe.c`（`make tools`），
 容器内运行可枚举主窗口下 Win32 窗口树（含 WPS 的 QWidget/OpusApp 链），

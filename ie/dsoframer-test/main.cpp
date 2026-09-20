@@ -68,6 +68,11 @@ static LONG g_lLastServerW = -1, g_lLastServerH = -1;
  * the DocWnd client area after each layout pass.
  * Verified on Windows: this path is a no-op there (the child already
  * has the right size), so the hack is safe to leave enabled. */
+#ifndef DISABLE_WINE_SERVER_SYNC
+#define DISABLE_WINE_SERVER_SYNC 0
+#endif
+
+#if !DISABLE_WINE_SERVER_SYNC
 static void SyncEmbeddedServerWindow(void)
 {
     HWND hCtl, hDoc, hWps;
@@ -152,6 +157,7 @@ static void DoSyncEmbeddedServerWindow(void)
     SetWindowPos(hWps, NULL, 0, 0, rc.right, rc.bottom,
                  SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
 }
+#endif /* !DISABLE_WINE_SERVER_SYNC */
 
 static void UpdateLayout(void)
 {
@@ -170,7 +176,9 @@ static void UpdateLayout(void)
                        (rc.right - rc.left) - 2 * FRAMER_X,
                        (rc.bottom - rc.top) - 60 };
         g_framer->SetRects(&rcCtl);
+#if !DISABLE_WINE_SERVER_SYNC
         SyncEmbeddedServerWindow();
+#endif
     }
 }
 
@@ -467,7 +475,9 @@ static void HandleCommand(HWND hwnd, int id)
         /* Wine: server didn't go UI-active, so no ResizeBorder reaches it
            and the WPS window tree doesn't re-flow after the ribbon toggle.
            Push the new DocWnd size down (no-op on Windows). */
+#if !DISABLE_WINE_SERVER_SYNC
         SyncEmbeddedServerWindow();
+#endif
         break;
     }
     case IDM_SHOW_BORDER_NONE:
@@ -564,7 +574,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     }
 
     case WM_APP_SYNC_SERVER:
+#if !DISABLE_WINE_SERVER_SYNC
         DoSyncEmbeddedServerWindow();
+#endif
         return 0;
 
     case WM_SIZE:
