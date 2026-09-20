@@ -49,9 +49,110 @@ static BOOL g_fDisableItem[9] = {0};
 /* Automation from command line: "new:Word.Document" / "open:C:\\doc.doc" */
 static WCHAR g_szAutoCmd[512] = L"";
 
+/* Wine: deferred embedded-server window sync (see SyncEmbeddedServerWindow).
+   Doing the cross-process SetWindowPos inline inside WM_SIZE deadlocks the
+   UI thread under Wine (menus stop responding), so it is posted instead.
+   The last synced size is cached to skip redundant cross-process calls. */
+#define WM_APP_SYNC_SERVER  (WM_APP + 1)
+static LONG g_lLastServerW = -1, g_lLastServerH = -1;
+
 /* =====================================================================
  * Helpers
  * ===================================================================== */
+/* Wine-only workaround: the embedded docobj server (WPS) never calls
+ * IOleInPlaceSite::OnUIActivate under Wine, so CDsoDocObject's resize
+ * branches (ResizeBorder / IOleDocumentView::SetRect) never run and the
+ * server window tree never learns about size changes. The server's Qt
+ * window tree itself resizes fine when moved - so the container pushes
+ * the size down one level: DocWnd's child "wps" QWidget is resized to
+ * the DocWnd client area after each layout pass.
+ * Verified on Windows: this path is a no-op there (the child already
+ * has the right size), so the hack is safe to leave enabled. */
+static void SyncEmbeddedServerWindow(void)
+{
+    HWND hCtl, hDoc, hWps;
+    WCHAR cls[64];
+    RECT rc;
+
+    if (!g_framer)
+        return;
+    hCtl = g_framer->Window();
+    if (!hCtl)
+        return;
+
+    /* OCX window -> DSOFramerDocWnd */
+    hDoc = GetWindow(hCtl, GW_CHILD);
+    while (hDoc) {
+        GetClassNameW(hDoc, cls, 64);
+        if (lstrcmpW(cls, L"DSOFramerDocWnd") == 0)
+            break;
+        hDoc = GetWindow(hDoc, GW_HWNDNEXT);
+    }
+    if (!hDoc)
+        return;
+
+    /* DocWnd -> top-level widget of the server (QWidget for WPS) */
+    hWps = GetWindow(hDoc, GW_CHILD);
+    while (hWps) {
+        GetClassNameW(hWps, cls, 64);
+        if (lstrcmpW(cls, L"QWidget") == 0)
+            break;
+        hWps = GetWindow(hWps, GW_HWNDNEXT);
+    }
+    if (!hWps)
+        return;
+
+    GetClientRect(hDoc, &rc);
+    /* Skip if the server widget already matches (Windows no-op case) */
+    RECT rcW;
+    GetWindowRect(hWps, &rcW);
+    LONG w = rcW.right - rcW.left, h = rcW.bottom - rcW.top;
+    if (w == rc.right && h == rc.bottom)
+        return;
+    /* Defer: cross-process SetWindowPos must not run inside WM_SIZE */
+    PostMessage(g_hwndMain, WM_APP_SYNC_SERVER, 0, 0);
+}
+
+/* Posted handler: performs the actual cross-process window sync */
+static void DoSyncEmbeddedServerWindow(void)
+{
+    HWND hCtl, hDoc, hWps;
+    WCHAR cls[64];
+    RECT rc;
+
+    if (!g_framer)
+        return;
+    hCtl = g_framer->Window();
+    if (!hCtl)
+        return;
+    hDoc = GetWindow(hCtl, GW_CHILD);
+    while (hDoc) {
+        GetClassNameW(hDoc, cls, 64);
+        if (lstrcmpW(cls, L"DSOFramerDocWnd") == 0)
+            break;
+        hDoc = GetWindow(hDoc, GW_HWNDNEXT);
+    }
+    if (!hDoc)
+        return;
+    hWps = GetWindow(hDoc, GW_CHILD);
+    while (hWps) {
+        GetClassNameW(hWps, cls, 64);
+        if (lstrcmpW(cls, L"QWidget") == 0)
+            break;
+        hWps = GetWindow(hWps, GW_HWNDNEXT);
+    }
+    if (!hWps)
+        return;
+
+    GetClientRect(hDoc, &rc);
+    if ((LONG)rc.right == g_lLastServerW && (LONG)rc.bottom == g_lLastServerH)
+        return;
+    g_lLastServerW = rc.right;
+    g_lLastServerH = rc.bottom;
+    SetWindowPos(hWps, NULL, 0, 0, rc.right, rc.bottom,
+                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+}
+
 static void UpdateLayout(void)
 {
     RECT rc;
@@ -69,6 +170,7 @@ static void UpdateLayout(void)
                        (rc.right - rc.left) - 2 * FRAMER_X,
                        (rc.bottom - rc.top) - 60 };
         g_framer->SetRects(&rcCtl);
+        SyncEmbeddedServerWindow();
     }
 }
 
@@ -362,6 +464,10 @@ static void HandleCommand(HWND hwnd, int id)
         BOOL b = FALSE; g_framer->get_Toolbars(&b);
         g_framer->put_Toolbars(!b);
         SyncShowChecks(hmenu);
+        /* Wine: server didn't go UI-active, so no ResizeBorder reaches it
+           and the WPS window tree doesn't re-flow after the ribbon toggle.
+           Push the new DocWnd size down (no-op on Windows). */
+        SyncEmbeddedServerWindow();
         break;
     }
     case IDM_SHOW_BORDER_NONE:
@@ -456,6 +562,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
         return 0;
     }
+
+    case WM_APP_SYNC_SERVER:
+        DoSyncEmbeddedServerWindow();
+        return 0;
 
     case WM_SIZE:
         UpdateLayout();

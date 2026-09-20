@@ -53,18 +53,27 @@ make run        # 拷贝 exe 到 drive_c/DsoFramer/ 并用容器 wine 启动
 
 Windows 下行为正常，Wine/deepin-wine 下观察到以下差异（待深挖）：
 
-1. **Toggle Toolbar 后 WPS 区域不刷新**：`put_Toolbars` →
-   `OLECMDID_HIDETOOLBARS` 后 WPS 自身窗口尺寸变化不触发同步重绘，
-   鼠标移过区域才逐步刷新（直接暴露 DC 无 WM_PAINT 链）。宿主
-   `RedrawWindow(RDW_ALLCHILDREN|RDW_UPDATENOW)` 可强刷，但随后
-   resize 布局链路会异常（控件认为组件失活，画 "inactive document"）。
-2. **窗口 resize/maximize 后 WPS 区域不跟随**：`DSOFramerDocWnd`
-   （文档 site 窗口）保持旧尺寸。控件 `OnResize` →
-   `CDsoDocObject::OnNotifySizeChange` → `SetWindowPos(m_hwnd)` 链路
-   中 `m_Size`/`m_rcViewRect` 未按预期更新，或 `SetWindowPos` 后
-   WPS 嵌套 QWidget 子窗口未级联 resize。
+1. **窗口 resize / toggle Toolbar 后 WPS 区域不跟随**（VB6Test 同样复现）。
 
-调试辅助：`wininfo.c` / `framerprobe.c`（`make wininfo` 需手工编译），
+   根因（+ole/+rpc trace 定位）：
+   - 容器→控件→`DSOFramerDocWnd` 链路全部正常（`SetExtent`/`SetObjectRects`/
+     `OnPosRectChange`/DocWnd `SetWindowPos` 均执行）；
+   - 断点在 `CDsoDocObject::OnNotifySizeChange` 的两个分支：
+     Wine 下 WPS（out-of-proc docobj 服务器）**从不调用
+     `IOleInPlaceSite::OnUIActivate`**，`m_fObjectUIActive` 恒为 FALSE，
+     `IOleInPlaceActiveObject::ResizeBorder` 全程 0 次调用（+rpc 抓包）；
+     `IOleDocumentView::SetRect` 分支同样不生效；
+   - 于是 WPS 的 Qt 窗口树（`QWidget→OpusApp→_WwG`）收不到任何尺寸
+     通知，保持旧尺寸直到鼠标滑过触发局部重绘。Windows 上 WPS 会走
+     UI-active 流程，故无此问题。
+
+   绕过（`main.cpp` 的 `SyncEmbeddedServerWindow`）：宿主在布局后枚举
+   `DSOFramerDocWnd` 的 QWidget 子窗口，用 `SetWindowPos` 推到 DocWnd
+   客户区尺寸。注意跨进程 `SetWindowPos` 不能在 `WM_SIZE` 内联执行
+   （Wine 下会阻塞 UI 线程导致菜单卡死），必须 `PostMessage` 延迟 +
+   `SWP_ASYNCWINDOWPOS`，并按尺寸去重。Windows 上该调用是 no-op。
+
+调试辅助：`wininfo.c` / `framerprobe.c`（`make tools`），
 容器内运行可枚举主窗口下 Win32 窗口树（含 WPS 的 QWidget/OpusApp 链），
 用于观察哪一层窗口未 resize。
 

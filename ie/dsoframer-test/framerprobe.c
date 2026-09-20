@@ -40,7 +40,10 @@ static HWND FindFramerCtl(HWND top)
 
 int main(int argc, char **argv)
 {
-    HWND top = FindWindowW(NULL, L"C++ Test Application for DsoFramer Control");
+    WCHAR title[256] = L"C++ Test Application for DsoFramer Control";
+    if (argc >= 3 && lstrcmpA(argv[1], "-t") == 0)
+        MultiByteToWideChar(CP_ACP, 0, argv[2], -1, title, 256);
+    HWND top = FindWindowW(NULL, title);
     if (!top) { printf("main window not found\n"); return 1; }
 
     if (argc >= 2 && lstrcmpA(argv[1], "invalidate") == 0)

@@ -21,6 +21,16 @@
 
 #include "framerhost.h"
 
+/* Site-call tracing for Wine OLE debugging: logs every container
+ * boundary crossing. Enable to see which notification stops propagating
+ * (used to diagnose the missing OnUIActivate / ResizeBorder issue). */
+#ifdef FRAMER_TRACE
+#define SITE_TRACE(fmt, ...) do { \
+    printf("[site] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
+#else
+#define SITE_TRACE(fmt, ...) do { } while (0)
+#endif
+
 /* DISPID_AMBIENT_USERMODE lives in olectl.h (-709); guard for safety */
 #ifndef DISPID_AMBIENT_USERMODE
 #define DISPID_AMBIENT_USERMODE (-709)
@@ -72,15 +82,18 @@ public:
     }
 
     /* IOleWindow / IOleInPlaceSite / IOleInPlaceSiteEx */
-    STDMETHODIMP GetWindow(HWND *phwnd) override                 { *phwnd = m_hwnd; return S_OK; }
+    STDMETHODIMP GetWindow(HWND *phwnd) override                 { SITE_TRACE("GetWindow -> 0x%p", (void*)m_hwnd); *phwnd = m_hwnd; return S_OK; }
     STDMETHODIMP ContextSensitiveHelp(BOOL) override             { return S_OK; }
-    STDMETHODIMP CanInPlaceActivate() override                   { return S_OK; }
-    STDMETHODIMP OnInPlaceActivate() override                    { return S_OK; }
-    STDMETHODIMP OnUIActivate() override                         { return S_OK; }
+    STDMETHODIMP CanInPlaceActivate() override                   { SITE_TRACE("CanInPlaceActivate"); return S_OK; }
+    STDMETHODIMP OnInPlaceActivate() override                    { SITE_TRACE("OnInPlaceActivate"); return S_OK; }
+    STDMETHODIMP OnUIActivate() override                         { SITE_TRACE("OnUIActivate"); return S_OK; }
     STDMETHODIMP GetWindowContext(IOleInPlaceFrame **ppFrame,
         IOleInPlaceUIWindow **ppDoc, LPRECT prcPos, LPRECT prcClip,
         LPOLEINPLACEFRAMEINFO pfi) override
     {
+        SITE_TRACE("GetWindowContext pos=(%ld,%ld)-(%ld,%ld)",
+                   (long)prcPos->left, (long)prcPos->top,
+                   (long)prcPos->right, (long)prcPos->bottom);
         *ppFrame = static_cast<IOleInPlaceFrame*>(this);
         (*ppFrame)->AddRef();
         *ppDoc = NULL;
@@ -96,11 +109,11 @@ public:
         return S_OK;
     }
     STDMETHODIMP Scroll(SIZE) override                           { return S_OK; }
-    STDMETHODIMP OnUIDeactivate(BOOL) override                   { return S_OK; }
-    STDMETHODIMP OnInPlaceDeactivate() override                  { return S_OK; }
+    STDMETHODIMP OnUIDeactivate(BOOL f) override                 { SITE_TRACE("OnUIDeactivate(%d)", f); return S_OK; }
+    STDMETHODIMP OnInPlaceDeactivate() override                  { SITE_TRACE("OnInPlaceDeactivate"); return S_OK; }
     STDMETHODIMP DiscardUndoState() override                     { return S_OK; }
     STDMETHODIMP DeactivateAndUndo() override                    { return S_OK; }
-    STDMETHODIMP OnPosRectChange(LPCRECT) override               { return S_OK; }
+    STDMETHODIMP OnPosRectChange(LPCRECT rc) override            { if (rc) SITE_TRACE("OnPosRectChange (%ld,%ld)-(%ld,%ld)", (long)rc->left, (long)rc->top, (long)rc->right, (long)rc->bottom); return S_OK; }
     STDMETHODIMP OnInPlaceActivateEx(BOOL *pfNoRedraw, DWORD) override
     {
         if (pfNoRedraw) *pfNoRedraw = FALSE;
@@ -113,7 +126,7 @@ public:
     STDMETHODIMP SaveObject() override                           { return S_OK; }
     STDMETHODIMP GetMoniker(DWORD, DWORD, IMoniker **pmk) override { *pmk = NULL; return E_NOTIMPL; }
     STDMETHODIMP GetContainer(IOleContainer **pc) override       { *pc = NULL; return E_NOTIMPL; }
-    STDMETHODIMP ShowObject() override                           { return S_OK; }
+    STDMETHODIMP ShowObject() override                           { SITE_TRACE("ShowObject"); return S_OK; }
     STDMETHODIMP OnShowWindow(BOOL) override                     { return S_OK; }
     STDMETHODIMP RequestNewObjectLayout() override               { return E_NOTIMPL; }
 
@@ -123,20 +136,20 @@ public:
     STDMETHODIMP GetExtendedControl(IDispatch **pd) override     { *pd = NULL; return E_NOTIMPL; }
     STDMETHODIMP TransformCoords(POINTL *, POINTF *, DWORD) override { return E_NOTIMPL; }
     STDMETHODIMP TranslateAccelerator(LPMSG, DWORD) override     { return S_FALSE; } /* control handles keys */
-    STDMETHODIMP OnFocus(BOOL) override                          { return S_OK; }
+    STDMETHODIMP OnFocus(BOOL f) override                        { SITE_TRACE("OnFocus(%d)", f); return S_OK; }
     STDMETHODIMP ShowPropertyFrame() override                    { return E_NOTIMPL; }
 
     /* IOleInPlaceUIWindow / IOleInPlaceFrame */
-    STDMETHODIMP GetBorder(LPRECT) override                      { return S_OK; }
-    STDMETHODIMP RequestBorderSpace(LPCRECT) override            { return S_OK; }
-    STDMETHODIMP SetBorderSpace(LPCRECT) override                { return S_OK; }
-    STDMETHODIMP SetActiveObject(IOleInPlaceActiveObject *, LPCOLESTR) override { return S_OK; }
+    STDMETHODIMP GetBorder(LPRECT prc) override                  { SITE_TRACE("Frame::GetBorder"); return S_OK; }
+    STDMETHODIMP RequestBorderSpace(LPCRECT p) override          { SITE_TRACE("Frame::RequestBorderSpace %s", p ? "non-null" : "NULL"); return S_OK; }
+    STDMETHODIMP SetBorderSpace(LPCRECT p) override              { SITE_TRACE("Frame::SetBorderSpace %s", p ? "non-null" : "NULL"); return S_OK; }
+    STDMETHODIMP SetActiveObject(IOleInPlaceActiveObject *pao, LPCOLESTR name) override { HWND h=NULL; if (pao) pao->GetWindow(&h); SITE_TRACE("Frame::SetActiveObject obj=0x%p hwnd=0x%p", (void*)pao, (void*)h); return S_OK; }
     STDMETHODIMP InsertMenus(HMENU, LPOLEMENUGROUPWIDTHS) override { return S_OK; } /* control draws own menus */
-    STDMETHODIMP SetMenu(HMENU, HOLEMENU, HWND) override         { return S_OK; }
+    STDMETHODIMP SetMenu(HMENU hm, HOLEMENU ho, HWND ha) override { SITE_TRACE("Frame::SetMenu hmenu=0x%p", (void*)hm); return S_OK; }
     STDMETHODIMP RemoveMenus(HMENU) override                     { return S_OK; }
     STDMETHODIMP SetStatusText(LPCOLESTR) override               { return S_OK; }
-    STDMETHODIMP EnableModeless(BOOL) override                   { return S_OK; }
-    STDMETHODIMP TranslateAccelerator(LPMSG, WORD) override      { return S_FALSE; }
+    STDMETHODIMP EnableModeless(BOOL f) override                 { SITE_TRACE("Frame::EnableModeless(%d)", f); return S_OK; }
+    STDMETHODIMP TranslateAccelerator(LPMSG m, WORD w) override  { SITE_TRACE("Frame::TranslateAccelerator msg=0x%X", m?m->message:0); return S_FALSE; }
 
     /* IServiceProvider */
     STDMETHODIMP QueryService(REFGUID, REFIID, void **ppv) override
@@ -402,6 +415,10 @@ HRESULT CFramerControl::Create(HWND hwndParent, const FramerEventHandlers *handl
 void CFramerControl::SetRects(const RECT *rc)
 {
     if (!m_oleObj || !rc) return;
+    SITE_TRACE("SetRects (%ld,%ld)-(%ld,%ld) extent=%ldx%ld",
+               (long)rc->left, (long)rc->top, (long)rc->right, (long)rc->bottom,
+               (long)MulDiv(rc->right - rc->left, 2540, 96),
+               (long)MulDiv(rc->bottom - rc->top, 2540, 96));
 
     /* Pixels -> himetric (2540 units/cm at 96dpi), matching
        DsoPixelsToHimetric in the control source. */
@@ -409,6 +426,7 @@ void CFramerControl::SetRects(const RECT *rc)
     sl.cx = MulDiv(rc->right - rc->left, 2540, 96);
     sl.cy = MulDiv(rc->bottom - rc->top, 2540, 96);
     HRESULT hr = m_oleObj->SetExtent(DVASPECT_CONTENT, &sl);
+    SITE_TRACE("  SetExtent hr=0x%08lX", (unsigned long)hr);
     if (FAILED(hr))
         printf("[framer] SetExtent failed: 0x%08lX\n", (unsigned long)hr);
 
