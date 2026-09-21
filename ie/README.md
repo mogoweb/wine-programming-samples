@@ -7,7 +7,9 @@
 | 示例 | 描述 | 产物 |
 |------|------|------|
 | [call_external](./call_external/) | WebBrowser Host + window.external 实现 | `qahost.exe` |
+| [activex_form](./activex_form/) | 窗口化 ActiveX 控件 (OCX) 示例：label+文本框+提交按钮，分析 Wine 中 ActiveX 渲染流程 | `axformctl.dll` + `testpage.html` |
 | [pageoffice](./pageoffice/) | PageOffice 5.x ActiveX 控件内嵌演示（测试页 + 客户端安装程序，无源码） | `test.html` / `posetup.exe` |
+| [embedword](./embedword/) | DsoFramer（dsoframer.ocx）方案内嵌 Word 文档演示页面 | `index.html` |
 
 ## 快速开始
 
@@ -110,9 +112,18 @@ ie/
 │   │   ├── jquery-1.7.2.min.js
 │   │   └── qasui.js          # JavaScript 桥接库
 │   └── README.md
-└── pageoffice/
-    ├── test.html             # PageOffice ActiveX 内嵌测试页
-    ├── posetup.exe           # PageOffice 5.x 客户端安装程序（32 位）
+├── pageoffice/
+│   ├── test.html             # PageOffice ActiveX 内嵌测试页
+│   ├── posetup.exe           # PageOffice 5.x 客户端安装程序（32 位，LFS 存储）
+│   └── README.md
+├── activex_form/
+│   ├── axformctl.c           # 窗口化 ActiveX 控件完整实现（纯 Win32/COM）
+│   ├── axformctl.def         # COM DLL 导出定义
+│   ├── testpage.html         # <object> 嵌入测试页 + JS 调用
+│   ├── Makefile              # 交叉编译 + make run 一键注册运行
+│   └── README.md             # 含 Wine 中 ActiveX 渲染流程实测分析
+└── embedword/
+    ├── index.html            # DsoFramer 控件内嵌 Word 演示页
     └── README.md
 ```
 

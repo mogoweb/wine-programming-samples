@@ -1,0 +1,6 @@
+LIBRARY axformctl
+EXPORTS
+    DllGetClassObject
+    DllCanUnloadNow
+    DllRegisterServer
+    DllUnregisterServer

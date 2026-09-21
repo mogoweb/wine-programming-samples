@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- 必须IE文档模式：DsoFramer 仅在 IE(Trident) 内核下可用 -->
+<meta http-equiv="X-UA-Compatible" content="IE=8">
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>DsoFramer Word 内嵌示例</title>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; margin: 8px; }
+        h3 { margin: 4px 0; }
+        #toolbar { margin-bottom: 6px; line-height: 1.9; }
+        #toolbar button, #toolbar input { font-size: 12px; margin: 2px; }
+        #toolbar input { width: 220px; }
+    </style>
+    <script>
+        var $ = function (id) { return document.getElementById(id); };
+        var framer = function () { return $("FramerControl1"); };
+
+        // ---------- 新建 / 打开 ----------
+        // 新建空白 Word 文档（不需要任何文件，适合快速验证控件是否工作）
+        function doCreateNew() {
+            framer().CreateNew("Word.Document");
+        }
+
+        // 打开远程文档：Open(url, [只读], [ProgId], [用户名], [密码])
+        function doOpenUrl() {
+            var url = $("txtUrl").value;
+            if (!url) { alert("请输入文档 URL"); return; }
+            framer().Open(url);
+        }
+
+        // 打开本地文档（支持盘符路径）
+        function doOpenLocal() {
+            var path = $("txtLocal").value;
+            if (!path) { alert("请输入本地路径，如 C:\\test.doc"); return; }
+            framer().Open(path);
+        }
+
+        // ---------- 保存 ----------
+        // 本地文档直接保存
+        function doSave() { framer().Save(); }
+
+        // 保存到服务器：以 POST 方式把文档流提交到 HTTP 端点
+        function doSaveAs() {
+            var url = $("txtSaveUrl").value;
+            if (!url) { alert("请输入保存 URL"); return; }
+            framer().SaveAs(url);
+        }
+
+        // ---------- 打印 ----------
+        function doPrint() { framer().PrintOut(true); }   // true=先弹出打印对话框
+        function doPreview() { framer().PrintPreview(); }
+        function doPreviewExit() { framer().PrintPreviewExit(); }
+
+        // ---------- 系统对话框 ----------
+        // 0=打开 1=另存为 2=保存副本 3=打印 4=页面设置 5=文档属性
+        function doDialog(id) { framer().ShowDialog(id); }
+
+        // ---------- 修订 ----------
+        function doTrack(on) { framer().SetTrackRevisions(on); }
+        function doShowRevisions(on) { framer().SetShowRevisions(on); }
+
+        // ---------- Word 自动化（GetDocumentObject） ----------
+        // 返回 Word.Document 自动化对象，可用完整 Word 对象模型操作文档
+        function doDocInfo() {
+            var doc = framer().GetDocumentObject();
+            if (!doc) { alert("请先新建或打开文档"); return; }
+            alert("名称: " + doc.Name + "\r\n" +
+                  "全文路径: " + doc.FullName + "\r\n" +
+                  "字数: " + doc.Words.Count + "\r\n" +
+                  "段落数: " + doc.Paragraphs.Count);
+        }
+
+        function doInsertText() {
+            var doc = framer().GetDocumentObject();
+            if (!doc) { alert("请先新建或打开文档"); return; }
+            doc.Application.Selection.TypeText($("txtInsert").value);
+        }
+
+        function doClose() { framer().Close(); }
+    </script>
+</head>
+<body>
+    <h3>DsoFramer 内嵌 Word 文档示例</h3>
+
+    <div id="toolbar">
+        <button onclick="doCreateNew()">新建 Word</button>
+
+        <input id="txtUrl" value="http://localhost/sample.doc"/>
+        <button onclick="doOpenUrl()">打开 URL</button>
+
+        <input id="txtLocal" value="C:\test.doc"/>
+        <button onclick="doOpenLocal()">打开本地</button>
+
+        <button onclick="doSave()">保存</button>
+
+        <input id="txtSaveUrl" value="http://localhost/saveDoc"/>
+        <button onclick="doSaveAs()">另存到服务器</button>
+
+        <button onclick="doPrint()">打印</button>
+        <button onclick="doPreview()">打印预览</button>
+        <button onclick="doPreviewExit()">退出预览</button>
+
+        <button onclick="doDialog(1)">另存为</button>
+        <button onclick="doDialog(4)">页面设置</button>
+        <button onclick="doDialog(5)">属性</button>
+
+        <button onclick="doTrack(true)">开启修订</button>
+        <button onclick="doTrack(false)">关闭修订</button>
+
+        <button onclick="doDocInfo()">文档信息</button>
+
+        <input id="txtInsert" value="Hello DsoFramer"/>
+        <button onclick="doInsertText()">光标处插入文字</button>
+
+        <button onclick="doClose()">关闭文档</button>
+    </div>
+
+    <!-- ========== 核心 ActiveX 标签：DSOFramer 控件 ==========
+         classid 为微软 KB311745 示例 dsoframer.ocx (Framer Control 1.3) 的固定 CLSID；
+         codebase 指向同目录 cab 包时，IE 可自动下载安装控件 -->
+    <object id="FramerControl1"
+        classid="clsid:00460182-9E5E-11d5-B7C8-B8269041DD57"
+        width="100%" height="640px"
+        codebase="dsoframer.cab#version=1,3,0,1">
+        <param name="TitleBar" value="0"/>
+        <param name="TitleBarText" value="DsoFramer Demo"/>
+        <param name="TitleBarColor" value="16777215"/>
+        <param name="Menubar" value="1"/>
+        <param name="MenuBarColor" value="16777215"/>
+        <param name="Toolbars" value="1"/>
+        <param name="ToolbarColor" value="16777215"/>
+        <param name="BorderColor" value="16777215"/>
+        <!-- 控件未注册/加载失败时的提示 -->
+        <div>请先注册 dsoframer.ocx（regsvr32），并使用 IE 内核浏览器打开本页面</div>
+    </object>
+</body>
+</html>

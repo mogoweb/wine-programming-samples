@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>ActiveX 表单控件嵌入测试页</title>
+<style>
+  body   { font-family: sans-serif; background: #f4f6f8; margin: 40px; }
+  h1     { font-size: 18px; }
+  .panel { background: #fff; border: 1px solid #ccc; padding: 16px; width: 640px; }
+  button { margin-right: 8px; padding: 4px 12px; }
+  #status{ color: #888; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>ActiveX 控件嵌入测试页 (axformctl.dll)</h1>
+
+<div class="panel">
+  <!-- 控件入口：MSHTML 解析到该标签时按 CLSID CoCreateInstance 加载控件 -->
+  <object id="axform"
+          classid="clsid:5E8F4A2C-1D3B-4C6E-9F70-A1B2C3D4E5F6"
+          width="300" height="150" border="0">
+    <!-- 参数通过 IPersistPropertyBag::Load 传给控件 -->
+    <param name="label"   value="姓名：">
+    <param name="caption" value="AxForm 表单控件">
+    控件加载失败：请先运行 wine regsvr32 axformctl.dll
+  </object>
+
+  <p>
+    <!-- 通过 IDispatch 调用控件方法，观察脚本安全检查与 Invoke 路径 -->
+    <button onclick="try { alert('文本框内容: ' + document.getElementById('axform').GetText()); } catch (e) { alert('调用失败: ' + e.message); }">
+      JS 读取文本框 (GetText)
+    </button>
+    <button onclick="try { document.getElementById('axform').ShowText(); } catch (e) { alert('调用失败: ' + e.message); }">
+      JS 触发消息框 (ShowText)
+    </button>
+  </p>
+
+  <p id="status">提示：点击控件内的"提 交"按钮，控件将用 MessageBox 显示文本框内容。</p>
+</div>
+
+<script>
+  try {
+    var o = document.getElementById('axform');
+    document.getElementById('status').innerHTML =
+      'CLSID: 5E8F4A2C-1D3B-4C6E-9F70-A1B2C3D4E5F6 &nbsp;|&nbsp; object 标签已解析';
+  } catch (e) { }
+</script>
+</body>
+</html>
