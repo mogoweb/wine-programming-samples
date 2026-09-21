@@ -10,8 +10,10 @@
 
 - `<object>` 标签按 CLSID 加载控件，`<param>` 参数经 `IPersistPropertyBag` 传入
 - 控件窗口内含 STATIC label + EDIT 文本框 + BUTTON 提交按钮（全部为真实 Win32 子窗口）
+- **背景色可配置**：`<param name="bgcolor" value="#RRGGBB">`（IPersistPropertyBag 路径），
+  或 JS/宿主调用 `SetBgColor(COLORREF)`（IDispatch 路径）；WM_PAINT 用该颜色填充
 - 点击"提 交"按钮 → `MessageBoxW` 显示文本框内容
-- JavaScript 可经 `IDispatch` 调用 `GetText()` / `ShowText()`
+- JavaScript 可经 `IDispatch` 调用 `GetText()` / `ShowText()` / `SetBgColor()`
 - 所有关键调用以 `[AXFORM]` 前缀输出到 stderr，作为 Wine 渲染流程分析观察点
 
 ## 文件说明
@@ -20,8 +22,9 @@
 |------|------|
 | `axformctl.c` | 控件完整实现（COM 类工厂 + 6 个接口 + 控件窗口 + 注册代码） |
 | `axformctl.def` | DLL 导出（DllGetClassObject / DllCanUnloadNow / DllRegisterServer / DllUnregisterServer） |
+| `axhost.c` | 原生 Win32 宿主窗口：内嵌 AxFormCtl，验证 resize 时控件是否跟随 |
 | `testpage.html` | 测试页面（`<object>` 嵌入 + JS 调用按钮） |
-| `Makefile` | 交叉编译 + `make run` 一键注册并打开测试页 |
+| `Makefile` | 交叉编译 + `make run`（MSHTML 容器）/ `make run-host`（原生宿主） |
 
 ## 编译与运行
 
@@ -34,6 +37,9 @@ make install
 
 # 注册 + 用容器内 iexplore 打开测试页
 make run
+
+# 注册 + 运行原生宿主 axhost.exe（resize 跟随验证）
+make run-host
 
 # 卸载注册
 make uninstall
@@ -69,6 +75,33 @@ make run WINE=~/work/projects/deepin-wine/source/deepin-wine10-stable/build/wine
 | `IViewObject2` | 无窗口绘制入口（窗口化控件 Draw 仅记录，绘制走自身 WM_PAINT） |
 | `IPersistPropertyBag` | 读取 `<object>` 里的 `<param>`（label / caption） |
 | `IObjectSafety` | 向 MSHTML 声明脚本安全（MinGW 头文件缺失，手动声明） |
+
+## 原生宿主内嵌与 resize 跟随验证 (axhost.exe)
+
+`axhost.c` 是一个纯 Win32 原生容器（镜像 `ie/call_external/qahost.c` 的宿主侧实现）：
+`CoCreateInstance(CLSID_AxFormCtl)` → `SetClientSite` → `OleSetContainedObject` →
+`DoVerb(OLEIVERB_INPLACEACTIVATE)` → 控件以 `WS_CHILD` 挂到宿主 HWND 下。
+
+**resize 同步提供两种容器模式**（顶栏菜单切换，对照实验用）：
+
+| 模式 | WM_SIZE 时的同步调用 | 说明 |
+|------|---------------------|------|
+| A（默认） | `IOleInPlaceObject::SetObjectRects(客户区)` | 标准容器路径（MSHTML 同款） |
+| B | `IOleObject::SetExtent(HIMETRIC)` | 依赖控件 SetExtent→MoveWindow 实现的对照路径 |
+
+标题栏实时显示 `[模式] 客户区 WxH`，与 `[AXFORM] WM_SIZE`/`SetObjectRects` 日志对照，
+即可确认控件窗口尺寸是否跟随宿主变化。
+
+### 实测结论（wine-10.14 / deepin-wine10-stable）
+
+- **模式 A（SetObjectRects）**：拖拽缩放宿主窗口时，每次 WM_SIZE 触发
+  `SetObjectRects` → 控件 `MoveWindow` → 控件 `WM_SIZE` + `WM_PAINT`（日志序列完整），
+  控件窗口与宿主客户区同尺寸跟随，无残留/错位。
+- **模式 B（SetExtent）**：同样跟随（控件 `SetExtent` 内部走 MoveWindow），
+  HIMETRIC↔像素换算经 96dpi 假设，在非 96dpi 环境（Wine 虚拟桌面 dpi 缩放）会有圆整偏差。
+- 结论：**窗口化 ActiveX 控件在 Wine 中 resize 跟随由容器驱动**——容器在 WM_SIZE 里
+  调 SetObjectRects（或 SetExtent），控件负责 MoveWindow 自身窗口；与 MSHTML 容器行为一致。
+
 
 ## Wine 中的 ActiveX 渲染流程（实测，wine-10.14 / deepin-wine10-stable）
 

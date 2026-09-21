@@ -23,6 +23,7 @@
     <!-- 参数通过 IPersistPropertyBag::Load 传给控件 -->
     <param name="label"   value="姓名：">
     <param name="caption" value="AxForm 表单控件">
+    <param name="bgcolor" value="#3A6EA5">
     控件加载失败：请先运行 wine regsvr32 axformctl.dll
   </object>
 
@@ -33,6 +34,9 @@
     </button>
     <button onclick="try { document.getElementById('axform').ShowText(); } catch (e) { alert('调用失败: ' + e.message); }">
       JS 触发消息框 (ShowText)
+    </button>
+    <button onclick="try { document.getElementById('axform').SetBgColor(0x0000FF); } catch (e) { alert('调用失败: ' + e.message); }">
+      JS 改背景色为红 (SetBgColor)
     </button>
   </p>
 

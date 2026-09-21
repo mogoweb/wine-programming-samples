@@ -71,8 +71,9 @@ DEFINE_GUID(CLSID_AxFormCtl, 0x5e8f4a2c,0x1d3b,0x4c6e,0x9f,0x70,0xa1,0xb2,0xc3,0
 #define IDC_EDIT   1002
 #define IDC_BUTTON 1003
 
-#define DISPID_GETTEXT  1
-#define DISPID_SHOWTEXT 2
+#define DISPID_GETTEXT    1
+#define DISPID_SHOWTEXT   2
+#define DISPID_SETBGCOLOR 3
 
 static HINSTANCE g_hinst;
 static LONG g_obj_count;   /* 存活控件对象数 */
@@ -120,6 +121,7 @@ typedef struct {
     IAdviseSink *advise_sink;
     WCHAR label_text[64];           /* <param name="label"> */
     WCHAR caption_text[64];         /* <param name="caption"> */
+    COLORREF bgcolor;               /* <param name="bgcolor"> "#RRGGBB"，默认 COLOR_BTNFACE */
 } AxFormCtl;
 
 typedef struct {
@@ -200,6 +202,38 @@ static void ctl_show_message(AxFormCtl *This)
                 L"AxForm 提交的内容", MB_OK | MB_ICONINFORMATION);
 }
 
+/* ---------- 颜色解析与应用 ---------- */
+
+/* "#RRGGBB" / "RRGGBB" -> COLORREF（0x00BBGGRR），失败返回 FALSE */
+static BOOL parse_color(const WCHAR *s, COLORREF *out)
+{
+    DWORD v = 0;
+    int n = 0;
+
+    if (*s == L'#') s++;
+    while (*s) {
+        WCHAR c = *s;
+        DWORD d;
+        if (c >= L'0' && c <= L'9')      d = c - L'0';
+        else if (c >= L'a' && c <= L'f') d = c - L'a' + 10;
+        else if (c >= L'A' && c <= L'F') d = c - L'A' + 10;
+        else break;
+        v = v * 16 + d;
+        n++;
+        s++;
+    }
+    if (n != 6) return FALSE;
+    *out = RGB((v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
+    return TRUE;
+}
+
+static void ctl_set_bgcolor(AxFormCtl *This, COLORREF color)
+{
+    This->bgcolor = color;
+    ax_log("bgcolor -> #%06lx", (unsigned long)color);
+    if (This->hwnd) InvalidateRect(This->hwnd, NULL, TRUE);
+}
+
 /* ---------- 控件窗口：一个 label + 一个 EDIT + 一个 BUTTON ---------- */
 
 static LRESULT CALLBACK ctl_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -230,11 +264,16 @@ static LRESULT CALLBACK ctl_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
     case WM_PAINT: {
         PAINTSTRUCT ps;
+        HBRUSH br;
         HDC hdc = BeginPaint(hwnd, &ps);
-        FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_BTNFACE + 1));
+        /* 背景色：默认 COLOR_BTNFACE，<param name="bgcolor"> 或 SetBgColor 可改 */
+        br = CreateSolidBrush(This->bgcolor);
+        FillRect(hdc, &ps.rcPaint, br);
+        DeleteObject(br);
         EndPaint(hwnd, &ps);
-        ax_log("WM_PAINT: hwnd=%p rect=(%ld,%ld)-(%ld,%ld)", hwnd,
-               ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom);
+        ax_log("WM_PAINT: hwnd=%p rect=(%ld,%ld)-(%ld,%ld) bg=#%06lx", hwnd,
+               ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom,
+               (unsigned long)This->bgcolor);
         return 0;
     }
 
@@ -739,11 +778,17 @@ static HRESULT STDMETHODCALLTYPE PersistPropertyBag_Load(IPersistPropertyBag *f,
         IPropertyBag *bag, IErrorLog *errlog)
 {
     AxFormCtl *This = impl_from_IPersistPropertyBag(f);
+    WCHAR color_str[16] = L"";
     ax_log("IPersistPropertyBag::Load (reading <param> from <object>)");
     read_param(bag, L"label",   This->label_text,   64);
     read_param(bag, L"caption", This->caption_text, 64);
+    read_param(bag, L"bgcolor", color_str, 16);
+    if (color_str[0] && parse_color(color_str, &This->bgcolor))
+        ax_log("  bgcolor parsed = #%06lx", (unsigned long)This->bgcolor);
     if (This->hwnd_label)
         SetWindowTextW(This->hwnd_label, This->label_text);
+    if (This->hwnd)
+        InvalidateRect(This->hwnd, NULL, TRUE);
     return S_OK;
 }
 
@@ -766,8 +811,9 @@ static IPersistPropertyBagVtbl PersistPropertyBagVtbl = {
 /* ---------- IDispatch：供 JavaScript 调用 GetText / ShowText ---------- */
 
 static const struct { const WCHAR *name; DISPID id; } disp_map[] = {
-    { L"GetText",  DISPID_GETTEXT },
-    { L"ShowText", DISPID_SHOWTEXT },
+    { L"GetText",    DISPID_GETTEXT },
+    { L"ShowText",   DISPID_SHOWTEXT },
+    { L"SetBgColor", DISPID_SETBGCOLOR },
 };
 
 static HRESULT STDMETHODCALLTYPE Disp_QueryInterface(IDispatch *f, REFIID riid, void **ppv)
@@ -841,6 +887,21 @@ static HRESULT STDMETHODCALLTYPE Disp_Invoke(IDispatch *f, DISPID dispid, REFIID
             return DISP_E_MEMBERNOTFOUND;
         ctl_show_message(This);
         return S_OK;
+    case DISPID_SETBGCOLOR: {
+        VARIANT *arg, tmp;
+        if (!(flags & (DISPATCH_METHOD | DISPATCH_PROPERTYPUT)))
+            return DISP_E_MEMBERNOTFOUND;
+        if (!params || params->cArgs < 1)
+            return DISP_E_BADPARAMCOUNT;
+        arg = &params->rgvarg[params->cArgs - 1];   /* rgvarg 倒序，第一个实参在尾部 */
+        VariantInit(&tmp);
+        if (SUCCEEDED(VariantChangeType(&tmp, arg, 0, VT_I4)))
+            ctl_set_bgcolor(This, (COLORREF)V_I4(&tmp));    /* COLORREF 0x00BBGGRR */
+        else
+            ax_log("SetBgColor: bad arg vt=%d", (int)V_VT(arg));
+        VariantClear(&tmp);
+        return S_OK;
+    }
     }
     return DISP_E_MEMBERNOTFOUND;
 }
@@ -944,6 +1005,7 @@ static HRESULT STDMETHODCALLTYPE ClassFactory_CreateInstance(IClassFactory *f,
 
     lstrcpynW(This->label_text,   L"姓名：",            64);
     lstrcpynW(This->caption_text, L"AxForm 表单控件",   64);
+    This->bgcolor = GetSysColor(COLOR_BTNFACE);
     This->extent.cx = PX2HM(CTL_W);
     This->extent.cy = PX2HM(CTL_H);
 
